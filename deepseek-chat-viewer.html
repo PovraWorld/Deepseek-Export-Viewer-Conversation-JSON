@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deepseek Chat Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .upload-area {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            border: 2px dashed #ddd;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .conversations {
+            display: grid;
+            gap: 20px;
+        }
+
+        .conversation {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease;
+        }
+
+        .conversation:hover {
+            transform: translateY(-5px);
+        }
+
+        .conversation-header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .conversation-header:hover {
+            background: linear-gradient(45deg, #5a6fd8, #6a4190);
+        }
+
+        .conversation-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .conversation-meta {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            display: flex;
+            justify-content: between;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .conversation-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .conversation.expanded .conversation-content {
+            max-height: none;
+        }
+
+        .messages {
+            padding: 0;
+        }
+
+        .message {
+            padding: 20px;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s ease;
+        }
+
+        .message:hover {
+            background-color: #f8f9ff;
+        }
+
+        .message:last-child {
+            border-bottom: none;
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            gap: 12px;
+        }
+
+        .message-role {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .message-role.user {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .message-role.assistant {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .message-time {
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        .message-content {
+            line-height: 1.6;
+            color: #333;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .stats {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: linear-gradient(45deg, #f8f9ff, #fff);
+            border-radius: 10px;
+            border: 1px solid #eee;
+        }
+
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .toggle-icon {
+            float: right;
+            transition: transform 0.3s ease;
+        }
+
+        .conversation.expanded .toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .upload-area {
+                padding: 30px 20px;
+            }
+            
+            .conversation-meta {
+                flex-direction: column;
+                gap: 5px;
+            }
+            
+            .message {
+                padding: 15px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Deepseek Chat Viewer</h1>
+            <p>Upload your conversations JSON file to view your chats in a beautiful, organized format</p>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-content">
+                <h3 style="margin-bottom: 15px;">📁 Drop your JSON file here or click to browse</h3>
+                <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                    Choose File
+                </button>
+                <input type="file" id="fileInput" class="file-input" accept=".json" />
+                <p style="margin-top: 15px; color: #666; font-size: 0.9rem;">Supports Deepseek conversations JSON format</p>
+            </div>
+        </div>
+
+        <div id="stats" class="stats" style="display: none;"></div>
+        <div id="conversations" class="conversations"></div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const conversationsContainer = document.getElementById('conversations');
+        const statsContainer = document.getElementById('stats');
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.name.endsWith('.json')) {
+                alert('Please select a JSON file');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    displayConversations(data);
+                } catch (error) {
+                    alert('Error parsing JSON file: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function displayConversations(conversations) {
+            conversationsContainer.innerHTML = '';
+            
+            if (!Array.isArray(conversations) || conversations.length === 0) {
+                conversationsContainer.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No conversations found</h3>
+                        <p>The uploaded file doesn't contain valid conversation data.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Show statistics
+            displayStats(conversations);
+
+            conversations.forEach(conversation => {
+                const conversationEl = createConversationElement(conversation);
+                conversationsContainer.appendChild(conversationEl);
+            });
+        }
+
+        function displayStats(conversations) {
+            const totalConversations = conversations.length;
+            let totalMessages = 0;
+            let userMessages = 0;
+            let assistantMessages = 0;
+
+            conversations.forEach(conv => {
+                const messages = extractMessages(conv.mapping);
+                totalMessages += messages.length;
+                messages.forEach(msg => {
+                    if (msg.isUser) userMessages++;
+                    else assistantMessages++;
+                });
+            });
+
+            statsContainer.innerHTML = `
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-number">${totalConversations}</div>
+                        <div class="stat-label">Conversations</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">${totalMessages}</div>
+                        <div class="stat-label">Total Messages</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">${userMessages}</div>
+                        <div class="stat-label">User Messages</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">${assistantMessages}</div>
+                        <div class="stat-label">AI Messages</div>
+                    </div>
+                </div>
+            `;
+            statsContainer.style.display = 'block';
+        }
+
+        function createConversationElement(conversation) {
+            const messages = extractMessages(conversation.mapping);
+            const insertedDate = new Date(conversation.inserted_at).toLocaleDateString();
+            const updatedDate = new Date(conversation.updated_at).toLocaleDateString();
+
+            const conversationEl = document.createElement('div');
+            conversationEl.className = 'conversation';
+
+            conversationEl.innerHTML = `
+                <div class="conversation-header" onclick="toggleConversation(this)">
+                    <div class="conversation-title">${conversation.title}</div>
+                    <div class="conversation-meta">
+                        <span>📅 Created: ${insertedDate}</span>
+                        <span>🔄 Updated: ${updatedDate}</span>
+                        <span>💬 ${messages.length} messages</span>
+                    </div>
+                    <div class="toggle-icon">▼</div>
+                </div>
+                <div class="conversation-content">
+                    <div class="messages">
+                        ${messages.map(message => `
+                            <div class="message">
+                                <div class="message-header">
+                                    <span class="message-role ${message.isUser ? 'user' : 'assistant'}">
+                                        ${message.isUser ? 'You' : 'Deepseek'}
+                                    </span>
+                                    <span class="message-time">${new Date(message.timestamp).toLocaleString()}</span>
+                                </div>
+                                <div class="message-content">${escapeHtml(message.content)}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            return conversationEl;
+        }
+
+        function extractMessages(mapping) {
+            const messages = [];
+            const visited = new Set();
+
+            function traverse(nodeId, isUser = false) {
+                if (!mapping[nodeId] || visited.has(nodeId)) return;
+                visited.add(nodeId);
+
+                const node = mapping[nodeId];
+                if (node.message && node.message.content) {
+                    messages.push({
+                        content: node.message.content,
+                        timestamp: node.message.inserted_at,
+                        isUser: isUser
+                    });
+                }
+
+                if (node.children) {
+                    node.children.forEach(childId => {
+                        traverse(childId, !isUser);
+                    });
+                }
+            }
+
+            // Start from root, skip it, and begin with first real message
+            if (mapping.root && mapping.root.children) {
+                mapping.root.children.forEach(childId => {
+                    traverse(childId, true); // First message is usually from user
+                });
+            }
+
+            return messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        }
+
+        function toggleConversation(header) {
+            const conversation = header.parentElement;
+            conversation.classList.toggle('expanded');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
